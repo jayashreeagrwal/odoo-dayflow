@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true, // Preserves access for accounts created before invitations were introduced.
     },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
     invitationTokenHash: { type: String, select: false },
     invitationExpiresAt: { type: Date, select: false },
     passwordResetTokenHash: { type: String, select: false },

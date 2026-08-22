@@ -52,6 +52,7 @@ export const api = {
   acceptInvitation: (data) => api.post('/auth/accept-invitation', data),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
   resetPassword: (data) => api.post('/auth/reset-password', data),
+  logout: () => api.post('/auth/logout', {}),
   getMe: () => api.get('/auth/me'),
 
   // Dashboard

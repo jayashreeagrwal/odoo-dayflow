@@ -8,9 +8,10 @@ A full-stack, role-based Human Resource Management System built for hackathon de
 ## 🌟 Key Features
 
 ### 1. 🔐 Authentication & Role-Based Access Control (RBAC)
-- **Employee Sign In / Sign Up**: Register with Employee ID, Email, Name, and Department.
-- **Role Enforcement**: Protected routes on both Frontend & Backend ensuring Employees only see their data while HR/Admin can manage company-wide operations.
-- **Demo Role Quick-Switcher**: 1-click switcher in the top navigation to instantly toggle between **HR Admin** and **Employee** perspectives during live judging.
+- **Secure Sign In**: Users sign in with an email address and password.
+- **Direct Employee Accounts**: An authenticated user can create an employee account directly with an initial password; no verification email is required.
+- **Role Enforcement**: Protected routes on both Frontend and Backend ensure employees only see their data while HR/Admin can manage company-wide operations.
+- **Session Security**: JWT sessions expire after 8 hours and are invalidated when accounts are deactivated, passwords are reset, or users sign out.
 
 ### 2. ⏱️ Real-Time Attendance Tracking
 - **Live Clock In / Clock Out**: Interactive timer with automatic work-hour calculations.
@@ -41,7 +42,7 @@ A full-stack, role-based Human Resource Management System built for hackathon de
 - **Frontend**: React (Vite), React Router v7, Lucide Icons, Pure Vanilla CSS (Design tokens, no Tailwind)
 - **Backend**: Node.js, Express.js (ES Modules)
 - **Database**: MongoDB (Mongoose ORM)
-- **Security**: JWT (JSON Web Tokens), bcryptjs password hashing, CORS protection, Role authorization middleware
+- **Security**: JWT (JSON Web Tokens), bcryptjs password hashing, token-version revocation, CORS protection, role authorization middleware
 
 ---
 
@@ -59,6 +60,10 @@ Make sure MongoDB is running locally (or set your MongoDB Atlas connection strin
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/dayflow
 JWT_SECRET=dayflow_hackathon_super_secret_jwt_key_2026
+# Optional: required only for password-reset emails
+SMTP_USER=your-gmail-address@gmail.com
+SMTP_APP_PASSWORD=your-google-app-password
+EMAIL_FROM=Dayflow HRMS <your-gmail-address@gmail.com>
 ```
 
 Seed realistic demo accounts, attendance logs, and sample leave requests:
@@ -88,15 +93,17 @@ npm run dev
 
 ## 🎭 Pre-Seeded Demo Credentials
 
+The seed command clears the configured database and creates these accounts. Use these credentials on the application login page.
+
 | Role | Email | Password | Employee ID | Description |
 |---|---|---|---|---|
 | **👑 HR / Admin** | `admin@dayflow.com` | `admin123` | `HR001` | Sarah Jenkins (Head of People) — Full management access |
-| **👤 Employee 1** | `employee@dayflow.com` | `emp123` | `EMP001` | Alex Morgan — Senior Frontend Developer (Ready to Clock In) |
-| **👤 Employee 2** | `rohan@dayflow.com` | `emp123` | `EMP002` | Rohan Sharma — Backend Engineer |
-| **👤 Employee 3** | `elena@dayflow.com` | `emp123` | `EMP003` | Elena Rostova — Product UI/UX Lead |
-| **👤 Employee 4** | `david@dayflow.com` | `emp123` | `EMP004` | David Kim — QA Automation Lead |
+| **👤 Employee 1** | `employee@dayflow.com` | `Employee123` | `EMP001` | Alex Morgan — Senior Frontend Developer (Ready to Clock In) |
+| **👤 Employee 2** | `rohan@dayflow.com` | `Employee123` | `EMP002` | Rohan Sharma — Backend Engineer |
+| **👤 Employee 3** | `elena@dayflow.com` | `Employee123` | `EMP003` | Elena Rostova — Product UI/UX Lead |
+| **👤 Employee 4** | `david@dayflow.com` | `Employee123` | `EMP004` | David Kim — QA Automation Lead |
 
-> **💡 Hackathon Tip**: On both the Login page and the Top Navigation header, you can click the **1-Click Demo Buttons** to instantly switch between the Admin and Employee view without manually typing passwords!
+Employee accounts created from **Employees → Add New Employee** are active immediately. HR enters the initial password during account creation; no email verification step is required.
 
 ---
 

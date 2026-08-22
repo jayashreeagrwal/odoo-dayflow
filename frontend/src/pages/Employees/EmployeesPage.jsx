@@ -31,6 +31,7 @@ export const EmployeesPage = () => {
     employeeId: '',
     name: '',
     email: '',
+    password: '',
     role: 'employee',
     department: 'Engineering',
     designation: 'Software Engineer',
@@ -81,6 +82,7 @@ export const EmployeesPage = () => {
         employeeId: '',
         name: '',
         email: '',
+        password: '',
         role: 'employee',
         department: 'Engineering',
         designation: 'Software Engineer',
@@ -390,10 +392,8 @@ export const EmployeesPage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Account setup</label>
-              <div style={{ padding: '0.75rem', background: '#eef2ff', color: '#3730a3', borderRadius: 8, fontSize: '0.8125rem' }}>
-                A secure 24-hour invitation will be emailed to this address.
-              </div>
+              <label className="form-label">Initial Password *</label>
+              <input type="password" className="form-control" placeholder="At least 8 characters" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })} required />
             </div>
           </div>
 
@@ -431,7 +431,7 @@ export const EmployeesPage = () => {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary" disabled={addLoading}>
-              {addLoading ? 'Sending Invitation...' : 'Send Employee Invitation'}
+              {addLoading ? 'Creating Account...' : 'Create Employee Account'}
             </button>
           </div>
         </form>

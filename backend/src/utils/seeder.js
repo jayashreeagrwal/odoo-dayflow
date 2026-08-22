@@ -20,7 +20,7 @@ const seedDatabase = async () => {
 
     // User's pre-save hook hashes these plaintext seed passwords once.
     const adminPassword = 'admin123';
-    const employeePassword = 'emp123';
+    const employeePassword = 'Employee123';
 
     // 1. Create Admin
     const adminUser = await User.create({
@@ -282,7 +282,7 @@ const seedDatabase = async () => {
     console.log('----------------------------------------------------');
     console.log('👤 EMPLOYEE DEMO ACCOUNT:');
     console.log('   Email:    employee@dayflow.com');
-    console.log('   Password: emp123');
+    console.log('   Password: Employee123');
     console.log('   Role:     Employee (Self-service Access)');
     console.log('----------------------------------------------------');
 

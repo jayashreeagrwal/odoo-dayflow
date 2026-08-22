@@ -1,10 +1,15 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { sendInvitationEmail, sendPasswordResetEmail } from '../utils/email.js';
+import { mockStore } from '../utils/mockStore.js';
+import { sendPasswordResetEmail } from '../utils/email.js';
 
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 const createOpaqueToken = () => crypto.randomBytes(32).toString('hex');
+const getFrontendUrl = () => {
+  const value = process.env.FRONTEND_URL || 'http://localhost:5173';
+  return value.startsWith('http') ? value : `https://${value}`;
+};
 
 const isStrongPassword = (password) =>
   typeof password === 'string' &&
@@ -13,8 +18,7 @@ const isStrongPassword = (password) =>
   /[A-Z]/.test(password) &&
   /\d/.test(password);
 
-const generateToken = (user) =>
-  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
+const generateToken = (user) => jwt.sign({ id: user._id, role: user.role, tokenVersion: Number(user.tokenVersion || 0) }, process.env.JWT_SECRET, { expiresIn: '8h' });
 
 const safeUser = (user) => ({
   _id: user._id,
@@ -35,9 +39,12 @@ export const register = (_req, res) =>
 
 export const inviteEmployee = async (req, res) => {
   try {
-    const { employeeId, name, email, department, designation, phone, address, basicSalary } = req.body;
-    if (!employeeId || !name || !email) {
-      return res.status(400).json({ message: 'Employee ID, name, and email are required' });
+    const { employeeId, name, email, password, department, designation, phone, address, basicSalary } = req.body;
+    if (!employeeId || !name || !email || !password) {
+      return res.status(400).json({ message: 'Employee ID, name, email, and password are required' });
+    }
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters and include uppercase, lowercase, and a number' });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -49,15 +56,13 @@ export const inviteEmployee = async (req, res) => {
       return res.status(409).json({ message: 'An account with this email or Employee ID already exists' });
     }
 
-    const invitationToken = createOpaqueToken();
     const basic = Number(basicSalary) || 45000;
     const user = await User.create({
       employeeId: normalizedEmployeeId,
       name: name.trim(),
       email: normalizedEmail,
-      emailVerified: false,
-      invitationTokenHash: hashToken(invitationToken),
-      invitationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      emailVerified: true,
+      password,
       role: 'employee',
       phone: phone || '',
       address: address || '',
@@ -77,65 +82,32 @@ export const inviteEmployee = async (req, res) => {
       },
     });
 
-    try {
-      await sendInvitationEmail({ email: normalizedEmail, name: user.name, token: invitationToken });
-    } catch (emailError) {
-      await User.findByIdAndDelete(user._id);
-      throw emailError;
-    }
-
-    res.status(201).json({ success: true, message: `Invitation sent to ${normalizedEmail}` });
+    res.status(201).json({ success: true, message: `Employee account created for ${normalizedEmail}`, user: safeUser(user) });
   } catch (error) {
     console.error('Invite Employee Error:', error.message);
     res.status(500).json({ message: error.message || 'Unable to send employee invitation' });
   }
 };
 
-export const acceptInvitation = async (req, res) => {
-  try {
-    const { token, password } = req.body;
-    if (!token || !password) return res.status(400).json({ message: 'Invitation token and password are required' });
-    if (!isStrongPassword(password)) {
-      return res.status(400).json({ message: 'Password must be at least 8 characters and include uppercase, lowercase, and a number' });
-    }
-
-    const user = await User.findOne({
-      invitationTokenHash: hashToken(token),
-      invitationExpiresAt: { $gt: new Date() },
-    }).select('+invitationTokenHash +invitationExpiresAt');
-
-    if (!user) return res.status(400).json({ message: 'Invitation link is invalid or has expired' });
-
-    user.password = password;
-    user.emailVerified = true;
-    user.invitationTokenHash = undefined;
-    user.invitationExpiresAt = undefined;
-    await user.save();
-
-    res.json({ success: true, token: generateToken(user), user: safeUser(user) });
-  } catch (error) {
-    console.error('Accept Invitation Error:', error.message);
-    res.status(500).json({ message: 'Unable to activate account' });
-  }
-};
-
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: 'Please provide both email and password' });
-
-    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
-    if (!user || !(await user.matchPassword(password))) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-    if (!user.emailVerified) return res.status(403).json({ message: 'Verify your email using the HR invitation before signing in' });
+    const user = await User.findOne({ email: email?.trim().toLowerCase() }).select('+password');
+    if (!user || !(await user.matchPassword(password))) return res.status(401).json({ message: 'Invalid email or password' });
     if (user.jobDetails?.status === 'Inactive') return res.status(403).json({ message: 'This account has been deactivated. Contact HR.' });
-
     res.json({ success: true, token: generateToken(user), user: safeUser(user) });
-  } catch (error) {
-    console.error('Login Error:', error.message);
-    res.status(500).json({ message: 'Server error during login' });
-  }
+  } catch (error) { res.status(500).json({ message: 'Server error during login' }); }
+};
+export const acceptInvitation = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !isStrongPassword(password)) return res.status(400).json({ message: 'A valid invitation token and strong password are required' });
+    const user = await User.findOne({ invitationTokenHash: hashToken(token), invitationExpiresAt: { $gt: new Date() } }).select('+invitationTokenHash +invitationExpiresAt');
+    if (!user) return res.status(400).json({ message: 'Invitation link is invalid or expired' });
+    user.password = password; user.emailVerified = true; user.tokenVersion = Number(user.tokenVersion || 0) + 1; user.invitationTokenHash = undefined; user.invitationExpiresAt = undefined;
+    await user.save();
+    res.json({ success: true, token: generateToken(user), user: safeUser(user) });
+  } catch (error) { res.status(500).json({ message: 'Unable to activate account' }); }
 };
 
 export const forgotPassword = async (req, res) => {
@@ -174,6 +146,7 @@ export const resetPassword = async (req, res) => {
     if (!user) return res.status(400).json({ message: 'Password reset link is invalid or has expired' });
 
     user.password = password;
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     user.passwordResetTokenHash = undefined;
     user.passwordResetExpiresAt = undefined;
     await user.save();
@@ -181,6 +154,21 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     console.error('Reset Password Error:', error.message);
     res.status(500).json({ message: 'Unable to reset password' });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    if (global.USE_IN_MEMORY_DB) {
+      const user = mockStore.users.find((candidate) => candidate._id === req.user._id);
+      if (user) user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+    } else {
+      await User.findByIdAndUpdate(req.user._id, { $inc: { tokenVersion: 1 } });
+    }
+    res.json({ success: true, message: 'Signed out successfully' });
+  } catch (error) {
+    console.error('Logout Error:', error.message);
+    res.status(500).json({ message: 'Unable to sign out' });
   }
 };
 

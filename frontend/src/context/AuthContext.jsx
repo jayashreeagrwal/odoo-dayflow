@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../api/client';
 
 const AuthContext = createContext();
@@ -8,19 +8,14 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('dayflow_token') || null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
-      const savedToken = localStorage.getItem('dayflow_token');
-      if (savedToken) {
+      if (localStorage.getItem('dayflow_token')) {
         try {
           const res = await api.getMe();
           setUser(res.user);
         } catch (error) {
           console.error('Session restoration failed:', error.message);
-          localStorage.removeItem('dayflow_token');
-          localStorage.removeItem('dayflow_user');
-          setToken(null);
           setUser(null);
         }
       }
@@ -32,16 +27,15 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await api.login({ email, password });
-    if (res.token) {
-      localStorage.setItem('dayflow_token', res.token);
-      localStorage.setItem('dayflow_user', JSON.stringify(res.user));
-      setToken(res.token);
-      setUser(res.user);
-    }
+    localStorage.setItem('dayflow_token', res.token);
+    localStorage.setItem('dayflow_user', JSON.stringify(res.user));
+    setToken(res.token);
+    setUser(res.user);
     return res;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await api.logout(); } catch (error) { console.error('Server logout failed:', error.message); }
     localStorage.removeItem('dayflow_token');
     localStorage.removeItem('dayflow_user');
     setToken(null);
@@ -50,20 +44,19 @@ export const AuthProvider = ({ children }) => {
 
   const updateUserData = (updatedUser) => {
     setUser((prev) => ({ ...prev, ...updatedUser }));
-    localStorage.setItem('dayflow_user', JSON.stringify({ ...user, ...updatedUser }));
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
         loading,
+        token,
         isAuthenticated: Boolean(token && user),
         isHrAdmin: user?.role === 'hr_admin',
-        login,
         logout,
         updateUserData,
+        login,
       }}
     >
       {children}

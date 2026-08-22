@@ -3,18 +3,13 @@ import User from '../models/User.js';
 import { mockStore } from '../utils/mockStore.js';
 
 export const protect = async (req, res, next) => {
-  let token;
-
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       if (global.USE_IN_MEMORY_DB) {
         req.user = mockStore.users.find((u) => u._id === decoded.id);
@@ -26,14 +21,20 @@ export const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'User belonging to token no longer exists' });
       }
 
-      next();
+      if (
+        req.user.emailVerified === false ||
+        req.user.jobDetails?.status === 'Inactive' ||
+        Number(req.user.tokenVersion || 0) !== Number(decoded.tokenVersion || 0)
+      ) {
+        return res.status(401).json({ message: 'Your session is no longer valid. Please sign in again.' });
+      }
+
+      return next();
     } catch (error) {
       console.error('Auth Middleware Error:', error.message);
       return res.status(401).json({ message: 'Not authorized, token failed or expired' });
     }
   }
 
-  if (!token) {
-    return res.status(401).json({ message: 'Not authorized, no token provided' });
-  }
+  return res.status(401).json({ message: 'Not authorized, no token provided' });
 };

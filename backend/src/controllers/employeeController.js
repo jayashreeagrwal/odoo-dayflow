@@ -39,7 +39,7 @@ export const getAllEmployees = async (req, res) => {
     }
 
     const employees = await User.find(query).sort({ createdAt: -1 });
-    res.json({ success: true, count: employees.length, employees });
+    return res.json({ success: true, count: employees.length, employees });
   } catch (error) {
     console.error('Get All Employees Error:', error);
     res.status(500).json({ message: 'Server error fetching employee directory' });
@@ -113,6 +113,9 @@ export const updateEmployeeByAdmin = async (req, res) => {
     if (global.USE_IN_MEMORY_DB) {
       const user = mockStore.users.find((u) => u._id === req.params.id);
       if (!user) return res.status(404).json({ message: 'Employee not found' });
+      const accessChanged =
+        (role && role !== user.role) ||
+        (status === 'Inactive' && user.jobDetails?.status !== 'Inactive');
 
       if (name) user.name = name;
       if (email) user.email = email.toLowerCase();
@@ -127,6 +130,8 @@ export const updateEmployeeByAdmin = async (req, res) => {
         status: status || user.jobDetails.status,
         joiningDate: user.jobDetails.joiningDate,
       };
+
+      if (accessChanged) user.tokenVersion = Number(user.tokenVersion || 0) + 1;
 
       if (salaryStructure) {
         const basic = Number(salaryStructure.basic) || user.salaryStructure.basic;
@@ -147,6 +152,7 @@ export const updateEmployeeByAdmin = async (req, res) => {
     if (email) user.email = email.toLowerCase();
     if (phone) user.phone = phone;
     if (address) user.address = address;
+    const accessChanged = (role && role !== user.role) || (status === 'Inactive' && user.jobDetails?.status !== 'Inactive');
     if (role) user.role = role;
 
     user.jobDetails = {
@@ -156,6 +162,8 @@ export const updateEmployeeByAdmin = async (req, res) => {
       status: status || user.jobDetails.status,
       joiningDate: user.jobDetails.joiningDate,
     };
+
+    if (accessChanged) user.tokenVersion = Number(user.tokenVersion || 0) + 1;
 
     if (salaryStructure) {
       const basic = Number(salaryStructure.basic) || user.salaryStructure.basic;

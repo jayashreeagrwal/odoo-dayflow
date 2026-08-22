@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 // Pre-hashed passwords for instant synchronous startup
 const salt = bcrypt.genSaltSync(10);
 const ADMIN_HASH = bcrypt.hashSync('admin123', salt);
-const EMP_HASH = bcrypt.hashSync('emp123', salt);
+const EMP_HASH = bcrypt.hashSync('Employee123', salt);
 
 class MockStore {
   constructor() {

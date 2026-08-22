@@ -6,18 +6,23 @@ const getFrontendUrl = () => {
 };
 
 const sendEmail = async ({ to, subject, html }) => {
+  const smtpHost = process.env.SMTP_HOST?.trim() || 'smtp.gmail.com';
+  const smtpPort = Number(process.env.SMTP_PORT || 465);
+  const smtpSecure = process.env.SMTP_SECURE !== 'false';
   const smtpUser = process.env.SMTP_USER?.trim();
-  const appPassword = process.env.SMTP_APP_PASSWORD?.replace(/\s/g, '');
+  const smtpPassword = (process.env.SMTP_PASSWORD || process.env.SMTP_APP_PASSWORD)?.replace(/\s/g, '');
 
-  if (!smtpUser || !appPassword) {
-    throw new Error('Email delivery is not configured. Set SMTP_USER and SMTP_APP_PASSWORD.');
+  if (!smtpUser || !smtpPassword) {
+    throw new Error('Email delivery is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD.');
   }
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
     auth: {
       user: smtpUser,
-      pass: appPassword,
+      pass: smtpPassword,
     },
   });
 
